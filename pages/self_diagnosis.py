@@ -554,6 +554,10 @@ def main():
             if results:
                 result_df = pd.DataFrame(results, columns=["날짜", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "총점"])
                 st.subheader("Result Record")
+
+                # 날짜를 datetime 형식으로 변환
+                result_df["날짜"] = pd.to_datetime(result_df["날짜"])
+                
                 # Altair 차트 만들기
                 line = alt.Chart(result_df).mark_line().encode(
                     x=alt.X('날짜:T', title='날짜', axis=alt.Axis(format='%Y-%m-%d')),
