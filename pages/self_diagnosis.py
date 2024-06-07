@@ -51,6 +51,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Initialize database once at the start
+init_db()
+
 # Function to save self-diagnosis result to the database
 def save_result(user, selected_date, scores, total_score, table):
     conn = sqlite3.connect('data.db')
@@ -646,5 +649,4 @@ def main():
 
 
 if __name__ == "__main__":
-    init_db()
     main()
