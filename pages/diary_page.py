@@ -7,12 +7,9 @@ import sqlite3
 from datetime import datetime
 from streamlit_option_menu import option_menu
 import plotly.express as px
-import plotly.graph_objects as go
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import matplotlib.pyplot as plt
-from matplotlib import font_manager, rc
 
 # 모델과 토크나이저 로드
 model_name = 'nlptown/bert-base-multilingual-uncased-sentiment'
@@ -334,31 +331,9 @@ def main():
                 
                 st.write("#### 감정 분포")
                 # 원형 차트로 변경
-                font_path = "/System/Library/Fonts/AppleSDGothicNeo.ttc"  # 한글 폰트 경로
-                font_name = font_manager.FontProperties(fname=font_path).get_name()
-                rc('font', family=font_name)
-                
-                names = list(st.session_state['sentiment_probs'].keys())
-                values = [st.session_state['sentiment_probs'][name] for name in names]
-                
-                # Define custom colors if necessary
-                custom_colors = ['#D98787', '#FFBFA6', '#B4BBCD', '#C4E3B5', '#8BC38D']
-                explode = (0, 0, 0, 0, 0)
-                
-                fig1, ax1 = plt.subplots()
-                wedges, texts, autotexts = ax1.pie(values, explode=explode, colors=custom_colors, autopct='%1.2f%%',
-                                                   startangle=90)
-
-                # Set the location of the labels to the side
-                ax1.legend(wedges, names,
-                           title="Sentiments",
-                           loc="center left",
-                           bbox_to_anchor=(1, 0, 0.5, 1))
-                ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-                # Display the pie chart in Streamlit
-                st.pyplot(fig1)
-               
+                custom_colors = ['#A8E6CF','#DCEDC1','#E0E0E0','#FFAAA5','#FF8B94']  # 원하는 색상 리스트
+                fig = px.pie(values=list(st.session_state['sentiment_probs'].values()), names=list(st.session_state['sentiment_probs'].keys()), color_discrete_sequence=custom_colors)
+                st.plotly_chart(fig)
 
                 st.write("#### 내가 쓴 일기 분석결과:")
                 for sentiment, prob in st.session_state['sentiment_probs'].items():
