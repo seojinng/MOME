@@ -1,3 +1,4 @@
+
 import streamlit as st
 from transformers import BertTokenizer, BertForSequenceClassification
 import torch
@@ -13,7 +14,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import matplotlib.pyplot as plt
 from matplotlib import font_manager, rc
-from io import BytesIO
+from matplotlib import font_manager as fm
+import os
+import zipfile
 
 # 모델과 토크나이저 로드
 model_name = 'nlptown/bert-base-multilingual-uncased-sentiment'
@@ -162,6 +165,7 @@ def send_email(subject, content, recipient_email):
 def main():
     # SQLite 데이터베이스 초기화
     init_db()
+    flag = 0
 
     # CSS 스타일 추가
     st.markdown(
@@ -296,6 +300,11 @@ def main():
         tabs = st.tabs(["일기 작성", "분석 결과", "지난 일기"])
 
         with tabs[0]:
+            
+            st.session_state['sentiment_probs'] = {}
+            st.session_state['result_message'] = ''
+            st.session_state['user_input'] = ''
+                
             st.markdown(
                 '''
                   <div class="subtitle">일기 주제 추천</div>
@@ -318,6 +327,7 @@ def main():
             user_input = st.text_area('', placeholder="여기에 일기를 작성해 주세요.", height=300)
             
             if st.button("분석하기"):
+                flag = 1
                 probabilities = analyze_sentiment_bert(user_input)
                 sentiment_probs, result_message = interpret_sentiment(probabilities)
 
@@ -330,75 +340,86 @@ def main():
                 st.success("분석이 완료되었습니다. '분석 결과' 탭을 확인하세요.")
 
         with tabs[1]:
+            zip_path = "AppleSDGothicNeo.ttc.zip"
+
+            # Extract the font file from the zip archive
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Assuming the font file is named 'AppleSDGothicNeo.ttc' inside the zip archive
+                font_filename = 'AppleSDGothicNeo.ttc'
+                zip_ref.extract(font_filename, '/tmp')
+
+            # Path to the extracted font file
+            extracted_font_path = os.path.join('/tmp', font_filename)
+            font_name = font_manager.FontProperties(fname=extracted_font_path).get_name()
+            rc('font', family=font_name)
+
             if 'sentiment_probs' in st.session_state:
-                st.write(f"#### {st.session_state['result_message']}")
-                st.divider()
-                
-                st.write("#### 감정 분포")
-                # 원형 차트로 변경
-                font_path = "/System/Library/Fonts/AppleSDGothicNeo.ttc"  # 한글 폰트 경로
-                font_name = font_manager.FontProperties(fname=font_path).get_name()
-                rc('font', family=font_name)
-                
-                names = list(st.session_state['sentiment_probs'].keys())
-                values = [st.session_state['sentiment_probs'][name] for name in names]
-                
-                # Define custom colors if necessary
-                custom_colors = ['#D98787', '#FFBFA6', '#B4BBCD', '#C4E3B5', '#8BC38D']
-                explode = (0, 0, 0, 0, 0)
-                
-                fig1, ax1 = plt.subplots()
-                wedges, texts, autotexts = ax1.pie(values, explode=explode, colors=custom_colors, autopct='%1.2f%%',
-                                                   startangle=90)
-
-                # Set the location of the labels to the side
-                ax1.legend(wedges, names,
-                           title="Sentiments",
-                           loc="center left",
-                           bbox_to_anchor=(1, 0, 0.5, 1))
-                ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-                # Display the pie chart in Streamlit
-                st.pyplot(fig1)
-               
-                # save_diary_to_db(st.session_state.get('logged_in_user'), datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_input, sentiment_probs, result_message)
-
-                st.write("#### 내가 쓴 일기 분석결과:")
-                for sentiment, prob in st.session_state['sentiment_probs'].items():
-                    st.write(f"{sentiment}: {prob:.2%}")
-                
-                found_words = find_sentiwords(st.session_state['user_input'], sentiword_dict)
-                if found_words:
-                    negative_words = [word for word, score in found_words if score < 0]
-                    positive_words = [word for word, score in found_words if score > 0]
-                        
-                    st.write("#### 일기에서 발견된 감성 단어")
-                    if negative_words:
-                        st.write(f"사용한 부정 단어: {', '.join(negative_words)}")
-                    else:
-                        st.write("사용한 부정 단어가 없습니다.")
+                if flag == 1:
+                    st.write(f"#### {st.session_state['result_message']}")
+                    st.divider()
                     
-                    if positive_words:
-                        st.write(f"사용한 긍정 단어: {', '.join(positive_words)}")
-                    else:
-                        st.write("사용한 긍정 단어가 없습니다.")
-                else:
-                    st.write("일기에서 감성 단어를 찾을 수 없습니다.")
+                    st.write("#### 감정 분포")
+                    # 원형 차트로 변경
+                    
+                    names = list(st.session_state['sentiment_probs'].keys())
+                    values = [st.session_state['sentiment_probs'][name] for name in names]
+                    
+                    # Define custom colors if necessary
+                    custom_colors = ['#D98787', '#FFBFA6', '#B4BBCD', '#C4E3B5', '#8BC38D']
+                    explode = (0, 0, 0, 0, 0)
+                    
+                    fig1, ax1 = plt.subplots()
+                    wedges, texts, autotexts = ax1.pie(values, explode=explode, colors=custom_colors, autopct='%1.2f%%',
+                                                    startangle=90, counterclock=True)
+
+                    # Set the location of the labels to the side
+                    ax1.legend(wedges, names,
+                            title="Sentiments",
+                            loc="center left",
+                            bbox_to_anchor=(1, 0, 0.5, 1))
+                    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+                    # Display the pie chart in Streamlit
+                    st.pyplot(fig1)
                 
-                share_emotion = st.checkbox("지금 이 감정을 공유하고 싶은 사람이 있나요?")
-                
-                if share_emotion:
-                    recipient_email = st.text_input("공유할 이메일 주소를 입력하세요", "")
-                    if st.button("요약 보내기"):
-                        email_content = f"""
-                        일기 내용: {st.session_state['user_input']}
-                        감정 확률 분포: {', '.join([f'{k}: {v:.2%}' for k, v in st.session_state['sentiment_probs'].items()])}
-                        {st.session_state['result_message']}
-                        """
-                        if send_email("감정 분석 요약", email_content, recipient_email):
-                            st.success("요약이 성공적으로 전송되었습니다.")
+                    # save_diary_to_db(st.session_state.get('logged_in_user'), datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_input, sentiment_probs, result_message)
+
+                    st.write("#### 내가 쓴 일기 분석결과:")
+                    for sentiment, prob in st.session_state['sentiment_probs'].items():
+                        st.write(f"{sentiment}: {prob:.2%}")
+                    
+                    found_words = find_sentiwords(st.session_state['user_input'], sentiword_dict)
+                    if found_words:
+                        negative_words = [word for word, score in found_words if score < 0]
+                        positive_words = [word for word, score in found_words if score > 0]
+                            
+                        st.write("#### 일기에서 발견된 감성 단어")
+                        if negative_words:
+                            st.write(f"사용한 부정 단어: {', '.join(negative_words)}")
                         else:
-                            st.error("요약 전송에 실패했습니다.")
+                            st.write("사용한 부정 단어가 없습니다.")
+                        
+                        if positive_words:
+                            st.write(f"사용한 긍정 단어: {', '.join(positive_words)}")
+                        else:
+                            st.write("사용한 긍정 단어가 없습니다.")
+                    else:
+                        st.write("일기에서 감성 단어를 찾을 수 없습니다.")
+                    
+                    share_emotion = st.checkbox("지금 이 감정을 공유하고 싶은 사람이 있나요?")
+                    
+                    if share_emotion:
+                        recipient_email = st.text_input("공유할 이메일 주소를 입력하세요", "")
+                        if st.button("요약 보내기"):
+                            email_content = f"""
+                            일기 내용: {st.session_state['user_input']}
+                            감정 확률 분포: {', '.join([f'{k}: {v:.2%}' for k, v in st.session_state['sentiment_probs'].items()])}
+                            {st.session_state['result_message']}
+                            """
+                            if send_email("감정 분석 요약", email_content, recipient_email):
+                                st.success("요약이 성공적으로 전송되었습니다.")
+                            else:
+                                st.error("요약 전송에 실패했습니다.")
             else:
                 st.write("아직 분석 결과가 없습니다. 먼저 '일기 작성' 탭에서 분석을 진행하세요.")
 
@@ -422,6 +443,7 @@ def main():
                         st.write(f"**일기 내용:** {row['Diary']}")
                         st.write("**분석 결과:**")
                         sentiment_probs = eval(row['Sentiment'])
+                        # for sentiment, prob in list(st.session_state['sentiment_probs'].items()):
                         for sentiment, prob in list(st.session_state['sentiment_probs'].items()):
                             st.write(f"{sentiment}: {prob:.2%}")
                         st.write(f"**ㄴ** {row['Message']}")
