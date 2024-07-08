@@ -1,5 +1,3 @@
-<img width="949" alt="mome" src="https://github.com/seojinng/MOME/assets/113421098/eb4efb04-c44e-4dcc-af55-8067c9ccee15">
-
-
 https://wqc5nl8z2xglpkskhhlahw.streamlit.app/
+![포스터](https://github.com/seojinng/MOME/assets/113421098/34d14c21-c293-436e-909b-832ca015323a)
 
